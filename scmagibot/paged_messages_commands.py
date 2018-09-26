@@ -80,7 +80,7 @@ class PagedMessagesCommands:
 
         # Confirmed this is a user commanding us. Analyze what to do.
         payload = self.__argsToDict(payload)
-        print(command, payload, hashtags)
+#        print(command, payload, hashtags)
         getattr(self, command)(
             bot=bot,
             update=update,
