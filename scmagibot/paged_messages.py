@@ -24,6 +24,10 @@ class PagedMessages:
         )(lambda bot, update: self.commands(bot, update, source="chat"))
 
     def __getKeyboard(self, messageID):
+        try:
+            tags = self.magi.database.messages[messageID]["tags"]
+        except:
+            tags = []
         return InlineKeyboardMarkup([
             [ # Row 1
                 Button("<<", callback_data=\
@@ -33,7 +37,7 @@ class PagedMessages:
 #                Button("Quote", switch_inline_query_current_chat=\
 #                    self.commands.generate.quote(messageID)),
                 Button("Edit", switch_inline_query_current_chat=\
-                    self.commands.generate.edit(messageID)),
+                    self.commands.generate.edit(messageID, tags=tags)),
                 Button("Delete", switch_inline_query_current_chat=\
                     self.commands.generate.delete(messageID)),
                 Button(">>", callback_data=\
