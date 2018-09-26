@@ -29,6 +29,25 @@ class SCMAGIDatabase:
             self.addMessage("""You may now start a private chat with me,
             where I'll present you with more options.""")
 
+    def editMessage(self, msgid, message=None, tags=None):
+        if not msgid in self.messages:
+            info("/edit: Editing a non-exist message. Failed.")
+            return False
+        record = self.messages[msgid]
+        if message:
+            record["message"] = message
+        if tags:
+            record["tags"] = tags
+        self.messages[msgid] = record
+        info("Edited message id: %s" % msgid)
+        return True
+
+    def deleteMessage(self, msgid):
+        if not msgid in self.messages: return False
+        del self.messages[msgid]
+        self.updateKeys()
+        return True
+
     def addMessage(self, message, tags=[]):
         msgid = os.urandom(16).hex()
         self.messages[msgid] = {
@@ -37,6 +56,7 @@ class SCMAGIDatabase:
             "timestamp": time.time(),
         }
         self.updateKeys()
+        return msgid
 
     def updateKeys(self):
         self.keys = []

@@ -30,6 +30,8 @@ class PagedMessages:
                     self.commands.generate.prev(messageID)),
                 Button("New", switch_inline_query_current_chat=\
                     self.commands.generate.new()),
+#                Button("Quote", switch_inline_query_current_chat=\
+#                    self.commands.generate.quote(messageID)),
                 Button("Edit", switch_inline_query_current_chat=\
                     self.commands.generate.edit(messageID)),
                 Button("Delete", switch_inline_query_current_chat=\
@@ -39,22 +41,41 @@ class PagedMessages:
             ]
         ])
 
-    def sendMessage(self, chatID, internalMessageID=None):
+    def __formatDatabaseRecord(self, record):
+        tags = record["tags"]
+        tagsJoined = "\n".join(["#%s" % e for e in tags])
+        ret = record["message"]
+        if tags:
+            ret += "\n----\n%s" % tagsJoined
+        return ret
+
+    def sendMessage(self, chatID, internalMessageID=None, **kvargs):
         if not internalMessageID:
             internalMessageID = self.magi.database.navigateKey()
-        record = self.db[internalMessageID] # TODO if message does not exist
-
+        if not internalMessageID in self.db: return False
+        record = self.db[internalMessageID]
         self.magi.core.send_message(
             chat_id=chatID,
-            text=record["message"],
-            reply_markup=self.__getKeyboard(internalMessageID)
+            text=self.__formatDatabaseRecord(record),
+            reply_markup=self.__getKeyboard(internalMessageID),
+            **kvargs
         )
+        return True
 
-    def navigateUpdate(self, update, currentInternalMessageID, direction=1):
-        newInternalMessageID = self.magi.database.navigateKey(
-            currentInternalMessageID,
-            direction
-        )
+    def navigateUpdate(
+        self,
+        update,
+        currentInternalMessageID=None, direction=1,
+        newInternalMessageID=None
+    ):
+        if not newInternalMessageID:
+            if not currentInternalMessageID:
+                newInternalMessageID = self.magi.database.navigateKey()
+            else:
+                newInternalMessageID = self.magi.database.navigateKey(
+                    currentInternalMessageID,
+                    direction
+                )
         # TODO if not newKey
 
         self.updateMessage(
@@ -64,18 +85,10 @@ class PagedMessages:
         )
 
     def updateMessage(self, chatID, messageID, internalMessageID):
+        record = self.db[internalMessageID]
         self.magi.core.editMessageText(
             chat_id=chatID,
             message_id=messageID,
-            text=self.db[internalMessageID]["message"],
+            text=self.__formatDatabaseRecord(record),
             reply_markup=self.__getKeyboard(internalMessageID),
         )
-        """
-        self.magi.core.editMessageText(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id,
-            text=str(time.time()),
-            reply_markup=self.__getKeyboard(update.effective_message.message_id),
-        )
-        print("button clicked", query)
-        """

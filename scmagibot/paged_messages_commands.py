@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from logging import info
 from .usertext.paged_messages_commands import *
 
 
@@ -15,6 +16,9 @@ class _CommandsGenerator:
     def new(self):
         return "/new \n//Now select a message, and set current message as a reply to it."
 
+    #def quote(self, msgid):
+    #    return TEXT_COMMAND_QUOTE.format(id=msgid)
+
     def next(self, msgid):
         return "/next id=%s" % msgid
 
@@ -24,7 +28,7 @@ class _CommandsGenerator:
 
 class PagedMessagesCommands:
 
-    CHAT_COMMANDS = ["edit", "delete", "new"]
+    CHAT_COMMANDS = ["edit", "delete", "new", "quote"]
     QUERY_COMMANDS = ["prev", "next"]
 
     def __init__(self, parent):
@@ -57,7 +61,8 @@ class PagedMessagesCommands:
             if not mentioned: return
             if command not in self.CHAT_COMMANDS: return
             
-            payload = message.text.split("//")[0].split(" ") # remove comments
+            payload = message.text.split("//")[0] # remove comments
+            payload = payload.replace("\n", " ").split(" ") # remove comments
             payload = [e for e in payload if e and e[0] not in "/@#"]
 
         elif source == "query":
@@ -84,13 +89,51 @@ class PagedMessagesCommands:
         )
 
     def new(self, bot, update, hashtags, args):
-        pass
+        newMessage = update.message.reply_to_message
+        if not newMessage:
+            info("/new command received without new message.")
+            update.message.reply_text(
+                "New memo failed: you have't choosen anything for creation."
+            )
+            return
+        msgid = self.magi.database.addMessage(
+            message=newMessage.text,
+            tags=hashtags
+        )
+        update.message.reply_text("Success!")
+
+    """def quote(self, bot, update, hashtags, args):
+        targetMessage = update.message.reply_to_message
+        withMessageID = args["id"]
+        self.parent.sendMessage(
+            chatID=update.message.chat_id,
+            internalMessageID=withMessageID,
+            reply_to_message_id=targetMessage.message_id
+        )"""
     
     def edit(self, bot, update, hashtags, args):
-        pass
+        replaceMessage = update.message.reply_to_message
+        internalMessageID = args["id"]
+        if replaceMessage:
+            r1 = self.magi.database.editMessage(
+                internalMessageID, message=replaceMessage.text)
+        else:
+            r1 = True
+        r2 = self.magi.database.editMessage(
+            internalMessageID, tags=hashtags)
+        if not r1 and not r2:
+            update.message.reply_text("Edit message failed.")
+            return
+        update.message.reply_text("Message edited successfully.")
 
     def delete(self, bot, update, hashtags, args):
-        pass
+        if "confirmed" not in [i.lower().strip() for i in args.keys()]:
+            update.message.reply_text("Deletion intent not confirmed.")
+            return
+        if self.magi.database.deleteMessage(args["id"]):
+            update.message.reply_text("Delete success!")
+        else:
+            update.message.reply_text("Delete failed.")
 
     def prev(self, bot, update, hashtags, args):
         self.parent.navigateUpdate(update, args["id"], -1)
